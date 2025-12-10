@@ -103,17 +103,21 @@ class PayoutCeleryTaskTest(TestCase):
 
 
 class PayoutModelTest(TestCase):
-    """Тесты модели (без Celery)"""
-
+    """Тесты модели (не требуют Celery)"""
+    
     def test_create_payout_model(self):
         """Тест создания модели выплаты напрямую (без API)"""
         payout = Payout.objects.create(
             amount=Decimal("100.00"),
             currency="USD",
             recipient="Test Recipient",
-            description="Test payment",
+            description="Test payment"
         )
-
+        
         self.assertEqual(payout.status, Payout.Status.PENDING)
         self.assertEqual(payout.amount, Decimal("100.00"))
-        self.assertEqual(str(payout), f"Payout {payout.id}")
+
+        self.assertEqual(
+            str(payout), 
+            f"Payout {payout.id} 100.00 USD -> Test Recipient [pending]"
+        )
