@@ -52,22 +52,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run Black check (форматирование)
+      - name: Check code formatting with Black
         run: |
-          black --check --diff app/ payouts/ || (echo "Run 'black .' locally"; exit 1)
+          black --check --diff app/ || (echo "Run 'black app/' locally and commit changes"; exit 1)
 
-      - name: Run Flake8 (линтер)
+      - name: Lint with Flake8
         run: |
-          flake8 app/ payouts/ --count --show-source --statistics
+          flake8 app/ --count --show-source --statistics
 
       - name: Run tests
         env:
           DATABASE_URL: postgres://tz3user:tz3pass@localhost:5432/tz3
           CELERY_BROKER_URL: redis://localhost:6379/0
         run: |
-          python app/manage.py test payouts --verbosity=2
+          cd app
+          python manage.py test payouts --verbosity=2
 
-      - name: Build Docker image (проверка, что образ собирается)
+      - name: Build Docker image (smoke test)
         run: |
           docker-compose build web
-          
