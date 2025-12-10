@@ -1,6 +1,5 @@
 from pathlib import Path
 import os
-from urllib.parse import urlparse
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
