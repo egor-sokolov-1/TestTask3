@@ -55,14 +55,13 @@ WSGI_APPLICATION = "config.wsgi.application"
 # Определяем где - в Docker или в CI
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgres://tz3user:tz3pass@localhost:5432/tz3"  # CI использует localhost
+    "postgres://tz3user:tz3pass@localhost:5432/tz3",  # CI использует localhost
 )
 
 if DATABASE_URL.startswith("postgres://"):
     import dj_database_url
-    DATABASES = {
-        "default": dj_database_url.parse(DATABASE_URL)
-    }
+
+    DATABASES = {"default": dj_database_url.parse(DATABASE_URL)}
 else:
     DATABASES = {
         "default": {
@@ -70,7 +69,7 @@ else:
             "NAME": "tz3",
             "USER": "tz3user",
             "PASSWORD": "tz3pass",
-            "HOST": "db",        # только в Docker
+            "HOST": "db",  # только в Docker
             "PORT": "5432",
         }
     }
