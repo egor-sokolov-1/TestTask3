@@ -1,4 +1,4 @@
-# Payouts API — Django + DRF + Celery + Redis + Docker
+# Payouts API - Django + DRF + Celery + Redis + Docker
 
 ### 
 - Асинхронная обработка выплат через Celery + Redis
@@ -12,7 +12,7 @@
 
 ## Локальный запуск (через Docker)
 
-- git clone <репазиторий>
+- git clone https://github.com/egor-sokolov-1/TestTask3
 - cd TZ3
 - docker-compose up --build
 
