@@ -21,7 +21,7 @@ class PayoutAPITestCase(APITestCase):
             "amount": "499.99",
             "currency": "USD",
             "recipient": "John Doe, IBAN: DE89370400440532013000",
-            "description": "Тестовая выплата"
+            "description": "Тестовая выплата",
         }
 
         response = self.client.post(self.url, payload, format="json")
@@ -40,11 +40,7 @@ class PayoutAPITestCase(APITestCase):
     @patch("payouts.views.process_payout.delay")
     def test_celery_task_called_on_create(self, mock_delay):
         """Тест вызова Celery-задача"""
-        payload = {
-            "amount": "777.00",
-            "currency": "EUR",
-            "recipient": "Alice"
-        }
+        payload = {"amount": "777.00", "currency": "EUR", "recipient": "Alice"}
 
         response = self.client.post(self.url, payload, format="json")
 
