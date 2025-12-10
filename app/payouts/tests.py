@@ -12,7 +12,7 @@ from .models import Payout
 class PayoutAPITestCase(APITestCase):
 
     def setUp(self):
-        self.url = reverse('payouts-list')
+        self.url = reverse("payouts-list")
 
     def test_create_payout_success(self):
         """Успешное создание заявки"""
@@ -20,10 +20,10 @@ class PayoutAPITestCase(APITestCase):
             "amount": "499.99",
             "currency": "USD",
             "recipient": "J D, IBAN: DE89370400440532013000",
-            "description": "Тестовая выплата"
+            "description": "Тестовая выплата",
         }
 
-        response = self.client.post(self.url, payload, format='json')
+        response = self.client.post(self.url, payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Payout.objects.count(), 1)
@@ -34,16 +34,12 @@ class PayoutAPITestCase(APITestCase):
         self.assertEqual(payout.status, Payout.Status.PENDING)
         self.assertIn("id", response.data)
 
-    @patch('payouts.views.process_payout.delay')
+    @patch("payouts.views.process_payout.delay")
     def test_celery_task_called_on_create(self, mock_delay):
         """При создании заявки вызывается Celery-задача"""
-        payload = {
-            "amount": "777.00",
-            "currency": "EUR",
-            "recipient": "Alice"
-        }
+        payload = {"amount": "777.00", "currency": "EUR", "recipient": "Alice"}
 
-        response = self.client.post(self.url, payload, format='json')
+        response = self.client.post(self.url, payload, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         payout = Payout.objects.first()

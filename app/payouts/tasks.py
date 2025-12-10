@@ -2,6 +2,7 @@ from celery import shared_task
 import time
 from .models import Payout
 
+
 @shared_task
 def process_payout(payout_id):
     """
