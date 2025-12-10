@@ -1,4 +1,3 @@
-# app/payouts/tests.py
 from decimal import Decimal
 from unittest.mock import patch, MagicMock
 from django.test import TestCase
@@ -22,18 +21,22 @@ class PayoutCreationTest(APITestCase):
             "description": "Тестовая выплата",
         }
 
-    def test_create_payout_success(self):
+    @patch("payouts.views.process_payout.delay")  # Mock Celery задачу
+    def test_create_payout_success(self, mock_delay):
         """ТЕСТ 1: Успешное создание заявки"""
-        # проверяем реальное создание
+        # Настраиваем mock чтобы избежать попыток подключения к Redis
+        mock_delay.return_value = MagicMock(id="test-task-id")
+
+        # Запрос с моком
         response = self.client.post(self.url, self.valid_payload, format="json")
 
         # Проверяем статус ответа
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        # объект создан в базе
+        # Проверяем что объект создан в базе
         self.assertEqual(Payout.objects.count(), 1)
 
-        # поля созданного объекта
+        # Проверяем поля созданного объекта
         payout = Payout.objects.first()
         self.assertEqual(payout.amount, Decimal("499.99"))
         self.assertEqual(payout.currency, "USD")
@@ -44,6 +47,9 @@ class PayoutCreationTest(APITestCase):
         # Проверяем данные в ответе
         self.assertEqual(response.data["id"], payout.id)
         self.assertEqual(response.data["status"], Payout.Status.PENDING)
+
+        # Проверяем что Celery задача была вызвана
+        mock_delay.assert_called_once_with(payout.id)
 
 
 class PayoutCeleryTaskTest(TestCase):
@@ -67,10 +73,10 @@ class PayoutCeleryTaskTest(TestCase):
         # Проверяем успешное создание
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
 
-        # Celery задача была вызвана
+        # Проверяем что Celery задача была вызвана
         self.assertTrue(mock_delay.called)
 
-        # задача вызвана с правильным аргументом (ID выплаты)
+        # Проверяем что задача вызвана с правильным аргументом (ID выплаты)
         payout = Payout.objects.first()
         mock_delay.assert_called_once_with(payout.id)
 
@@ -80,17 +86,34 @@ class PayoutCeleryTaskTest(TestCase):
     @patch("payouts.views.process_payout.delay")
     def test_celery_task_not_called_on_invalid_data(self, mock_delay):
         """
-        Дополнительный тест: задача не вызывается при ошибке валидации
+        Дополнительный тест - задача не вызывается при ошибке валидации
         """
         invalid_payload = {"amount": "-100.00", "currency": "USD"}
 
         response = self.client.post(self.url, invalid_payload, format="json")
 
-        # запрос не прошел
+        # Проверяем что запрос не прошел
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        # Celery задача НЕ была вызвана
+        # Проверяем что Celery задача не была вызвана
         self.assertFalse(mock_delay.called)
 
-        # объект не создан
+        # Проверяем что объект не создан
         self.assertEqual(Payout.objects.count(), 0)
+
+
+class PayoutModelTest(TestCase):
+    """Тесты модели (без Celery)"""
+
+    def test_create_payout_model(self):
+        """Тест создания модели выплаты напрямую (без API)"""
+        payout = Payout.objects.create(
+            amount=Decimal("100.00"),
+            currency="USD",
+            recipient="Test Recipient",
+            description="Test payment",
+        )
+
+        self.assertEqual(payout.status, Payout.Status.PENDING)
+        self.assertEqual(payout.amount, Decimal("100.00"))
+        self.assertEqual(str(payout), f"Payout {payout.id}")
