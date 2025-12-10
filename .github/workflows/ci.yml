@@ -70,4 +70,4 @@ jobs:
 
       - name: Build Docker image (smoke test)
         run: |
-          docker-compose build web
+          docker compose build web
