@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: tz3user
+          POSTGRES_PASSWORD: tz3pass
+          POSTGRES_DB: tz3
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tz3user -d tz3"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: --health-cmd="redis-cli ping" --health-interval=10s --health-timeout=5s --health-retries=5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Black check (форматирование)
+        run: |
+          black --check --diff app/ payouts/ || (echo "Run 'black .' locally"; exit 1)
+
+      - name: Run Flake8 (линтер)
+        run: |
+          flake8 app/ payouts/ --count --show-source --statistics
+
+      - name: Run tests
+        env:
+          DATABASE_URL: postgres://tz3user:tz3pass@localhost:5432/tz3
+          CELERY_BROKER_URL: redis://localhost:6379/0
+        run: |
+          python app/manage.py test payouts --verbosity=2
+
+      - name: Build Docker image (проверка, что образ собирается)
+        run: |
+          docker-compose build web
+          

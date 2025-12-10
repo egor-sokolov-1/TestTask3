@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: tz3-db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      POSTGRES_DB: tz3
+      POSTGRES_USER: tz3user
+      POSTGRES_PASSWORD: tz3pass
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tz3user -d tz3"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: tz3-redis
+    ports:
+      - "6379:6379"
+
+  web:
+    build: .
+    container_name: tz3-web
+    command: >
+      sh -c "
+        echo 'Создаём и применяем миграции...' &&
+        python manage.py makemigrations payouts --noinput &&
+        python manage.py migrate --noinput &&
+        echo 'Запускаем сервер...' &&
+        python manage.py runserver 0.0.0.0:8000
+      "
+    volumes:
+      - .:/code
+    ports:
+      - "8000:8000"
+    environment:
+      - DEBUG=True
+      - DATABASE_URL=postgres://tz3user:tz3pass@db:5432/tz3
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  celery:
+    build: .
+    container_name: tz3-celery
+    command: celery -A config worker -l info
+    volumes:
+      - .:/code
+    environment:
+      - DATABASE_URL=postgres://tz3user:tz3pass@db:5432/tz3
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - web
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  
