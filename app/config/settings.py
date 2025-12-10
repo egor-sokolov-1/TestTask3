@@ -1,4 +1,6 @@
 from pathlib import Path
+import os
+from urllib.parse import urlparse
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -50,16 +52,28 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "tz3",
-        "USER": "tz3user",
-        "PASSWORD": "tz3pass",
-        "HOST": "db",
-        "PORT": "5432",
+# Определяем где - в Docker или в CI
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL",
+    "postgres://tz3user:tz3pass@localhost:5432/tz3"  # CI использует localhost
+)
+
+if DATABASE_URL.startswith("postgres://"):
+    import dj_database_url
+    DATABASES = {
+        "default": dj_database_url.parse(DATABASE_URL)
     }
-}
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": "tz3",
+            "USER": "tz3user",
+            "PASSWORD": "tz3pass",
+            "HOST": "db",        # только в Docker
+            "PORT": "5432",
+        }
+    }
 
 CELERY_BROKER_URL = "redis://redis:6379/0"
 CELERY_RESULT_BACKEND = "redis://redis:6379/1"
